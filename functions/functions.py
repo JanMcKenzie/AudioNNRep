@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import os
 from scipy.io.wavfile import write
 from scipy import signal
+from sklearn.model_selection import train_test_split
 
 def read_wav_file(filename):
     with wave.open(filename, 'rb') as wf:
@@ -140,20 +141,47 @@ def create_single_inst_classification_set(N_samples = 1000, classes = ['bass', '
     filenames = read_files_in_dir(path)
     data_spectogrmas = []
     labels = []
+    unbalanced = False
+    unbalanced_classes = []
+    available_classes = np.arange(len(classes))
+
+    # Sort the files into the classes
+    instrument_files = np.zeros(len(classes), dtype=object)
+    for i in range(len(classes)):
+        instrument_files[i] = [filename for filename in filenames if classes[i] in filename]
+
+    # Check if there are enough files in the classes
+    file_amounts = [len(instrument_files[i]) for i in range(len(classes))]
+    total_file_amount = sum(file_amounts)
+
+    if total_file_amount < N_samples:
+        print("Not enough files in the classes")
+        print("Total files: ", total_file_amount)
+        return
+    
+    available_classes = np.arange(len(classes))
+    # Generate random integers for the classes\
+    random_ints = []
+    counter = np.zeros(len(classes))
     for i in range(N_samples):
-        # Pick random instrument
-        random_int = np.random.randint(0, len(classes))
-        instrument = classes[random_int]
-        # Find all files with that instrument
-        instrument_files = [filename for filename in filenames if instrument[0] in filename]
-        # Pick a random file
-        audio_file = np.random.choice(instrument_files, 1)
-        # Read the file
-        waveform, framerate = read_wav_file_scipy(path + audio_file[0])
-        # Create spectrogram
-        freq, ts, spectrogram = create_spectrogram(waveform, framerate)
-        # Flatten the spectrogram and append to data
-        data_spectogrmas.append(spectrogram.flatten())
+        random_int = int(np.random.choice(available_classes, 1))
+        random_ints.append(random_int)
+        counter[random_int] += 1
+        if int(counter[random_int]) == int(file_amounts[random_int]):
+            unbalanced = True
+            if classes[random_int] not in unbalanced_classes:
+                unbalanced_classes.append(classes[random_int])
+            available_classes = np.delete(available_classes, np.where(available_classes == random_int))
+
+    for i in range(N_samples):
+        random_int = random_ints[i]
+        # Pick a random file from the instrument and pop it from the list
+        audio_file = np.random.choice(instrument_files[random_int], 1)
+        # Remove the file from the list
+        instrument_files[random_int] = np.delete(instrument_files[random_int], np.where(instrument_files[random_int] == audio_file[0]))
+        waveform, params = read_wav_file_scipy(path + audio_file[0])
+        freq, ts, spectro = create_spectrogram(waveform)
+        data_spectogrmas.append(spectro)
         labels.append(random_int)
 
     # Create a label dictionary
@@ -165,4 +193,14 @@ def create_single_inst_classification_set(N_samples = 1000, classes = ['bass', '
     data_spectogrmas = np.array(data_spectogrmas)
     labels = np.array(labels)
 
+    if unbalanced:
+        print("WARNING: not enough files in classes: ", unbalanced_classes)
+        print("The dataset might be unbalanced")
+
     return data_spectogrmas, labels, label_dict
+
+def split_data(data, labels, val_frac = 0.1, test_frac = 0.1, random_state = 42):
+    total_frac = val_frac + test_frac
+    X_train, X_val_test, y_train, y_val_test = train_test_split(data, labels, test_size=total_frac, random_state=random_state)
+    X_val, X_test, y_val, y_test = train_test_split(X_val_test, y_val_test, test_size=test_frac/total_frac, random_state=random_state)
+    return X_train, X_val, X_test, y_train, y_val, y_test
