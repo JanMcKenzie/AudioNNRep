@@ -181,6 +181,8 @@ def create_single_inst_classification_set(N_samples = 1000, classes = ['bass', '
         instrument_files[random_int] = np.delete(instrument_files[random_int], np.where(instrument_files[random_int] == audio_file[0]))
         waveform, params = read_wav_file_scipy(path + audio_file[0])
         freq, ts, spectro = create_spectrogram(waveform)
+        # Flatten the spectrogram
+        spectro = spectro.flatten()
         data_spectogrmas.append(spectro)
         labels.append(random_int)
 
