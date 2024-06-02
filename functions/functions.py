@@ -206,3 +206,81 @@ def split_data(data, labels, val_frac = 0.1, test_frac = 0.1, random_state = 42)
     X_train, X_val_test, y_train, y_val_test = train_test_split(data, labels, test_size=total_frac, random_state=random_state)
     X_val, X_test, y_val, y_test = train_test_split(X_val_test, y_val_test, test_size=test_frac/total_frac, random_state=random_state)
     return X_train, X_val, X_test, y_train, y_val, y_test
+
+def audio_to_waveform(audio):
+    waveform, sr = librosa.load(audio, sr=None)
+    return waveform, sr
+
+def waveform_to_spectogram(waveform):
+    if waveform.dtype != np.float32:
+        waveform = waveform.astype(np.float32)
+    spectrogram = librosa.stft(waveform)
+    return np.abs(spectrogram)
+
+def pad_spectrogram(spec, target_shape):
+    padded_spec = np.zeros(target_shape,dtype = np.float32)
+    min_shape = np.minimum(target_shape, spec.shape)
+    padded_spec[:min_shape[0], :min_shape[1]] = spec[:min_shape[0], :min_shape[1]]
+    return padded_spec
+
+def spectogram_to_audio(spectrogram, sr,output_wav):
+    waveform = librosa.istft(spectrogram)
+    waveform = waveform/np.max(np.abs(waveform))
+    return write(output_wav, sr, (waveform*32767).astype(np.int16))
+
+
+def normalize_spectrogram(spectrogram):
+    min_val = np.min(spectrogram)
+    max_val = np.max(spectrogram)
+    normalized_spectrogram = (spectrogram - min_val) / (max_val - min_val + 1e-6)
+    return normalized_spectrogram
+
+def find_longest_array(arrays):
+    longest = 0
+    for array in arrays:
+        if len(array) > longest:
+            longest = len(array)
+    return longest
+
+def nu_gen_spectro(N, target_shape=(129, 285), nperseg=2048, noverlap=512):
+    data = []
+    labels = []
+    
+    #instrument_list = [bass, guitar, flutes, keyboards]
+    instrument_list = [guitar, flutes]
+    pianos_waveforms = []
+
+    for i in range(N):
+        paths, label = pick_samples_and_classify(instrument_list)
+        waveforms = add_waveform_to_list(paths)
+        mixed_waveform = combine_waveforms(waveforms)
+        
+        #audio = audio_to_waveform(mixed_waveform)
+        mixed_spectro = waveform_to_spectogram(mixed_waveform)
+        #mixed_spectro = audio_to_spectrogram(mixed_waveform)
+        mixed_spectro_padded = pad_spectrogram(mixed_spectro, target_shape)
+        mixed_spectro_normalized = normalize_spectrogram(mixed_spectro_padded)
+        
+        inter_waveforms = []
+        
+
+        inst_i = 0
+        for n, i in enumerate(label):
+            if i == 1:
+                spectro = waveform_to_spectogram(waveforms[inst_i])
+                spectro_padded = pad_spectrogram(spectro, target_shape)
+                spectro_normalized = normalize_spectrogram(spectro_padded)
+                inter_waveforms.append(spectro_normalized)
+                inst_i += 1
+                if n == 3:
+                    pianos_waveforms.append(spectro_normalized)
+                                if i == 0:
+                inter_waveforms.append(np.zeros(target_shape))
+                if n == 3:
+                    pianos_waveforms.append(np.zeros(target_shape))
+        data.append(mixed_spectro_normalized)
+        labels.append(inter_waveforms)
+    
+    data = np.array(data)
+    
+    return data, np.array(labels)
