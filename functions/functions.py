@@ -260,7 +260,7 @@ def create_single_inst_classification_set_new_input(N_samples = 1000, classes = 
         label_dict[i] = label
 
     # Convert to numpy arrays
-    data_spectogrmas = np.array(data_spectogrmas)
+    data_spectograms = np.array(data_spectograms)
     labels = np.array(labels)
 
     if unbalanced:
