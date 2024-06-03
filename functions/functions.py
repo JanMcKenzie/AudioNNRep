@@ -8,6 +8,7 @@ from scipy.io.wavfile import write
 from scipy import signal
 from sklearn.model_selection import train_test_split
 import librosa
+import random
 
 def read_wav_file(filename):
     with wave.open(filename, 'rb') as wf:
@@ -360,3 +361,41 @@ def nu_gen_spectro(N, instrument_list, path = "./audio" ,target_shape=(129, 285)
     
     return data, np.array(labels), np.array(original_labels) # remove last line if you want to return only data and labels
     
+
+def generate_mixed_spectrograms(n_mixed_spectrograms, number_of_instruments = 3, path = "./audio/"):
+    filenames = read_files_in_dir(path)
+    organ = [filename for filename in filenames if "organ" in filename] 
+    bass = [filename for filename in filenames if "bass" in filename]
+    guitar = [filename for filename in filenames if "guitar" in filename]
+    vocal = [filename for filename in filenames if "vocal" in filename] 
+    flutes = [filename for filename in filenames if "flute" in filename]
+    keyboards = [filename for filename in filenames if "keyboard" in filename] 
+    instruments = [organ, bass, guitar, vocal, flutes, keyboards]
+    picked_inst_arr = np.zeros((n_mixed_spectrograms, len(instruments)))
+    
+    for i in range(n_mixed_spectrograms):
+    # for each row, turn 3 random zeros to 1
+        picked_inst = random.sample(range(len(instruments)), number_of_instruments)
+        picked_inst_arr[i, picked_inst] = 1
+    
+        mixed_spectograms = []
+        for i in range(n_mixed_spectrograms):
+            selected_files = []
+            # Select files from the picked instruments
+            for j in range(len(instruments)):
+                if picked_inst_arr[i, j] == 1:
+                    selected_files.append(random.choice(instruments[j]))
+
+            # Generate the mixed spectrogram, and save the individual spectrograms
+            for j in range(len(selected_files)):
+                waveform_test, sr = audio_to_waveform(path + selected_files[j])
+                if j == 0:
+                    combined_waveform = waveform_test
+                else:
+                    combined_waveform = combined_waveform + waveform_test
+            
+
+            mixed_spectogram = waveform_to_spectogram(combined_waveform)
+            mixed_spectograms.append(mixed_spectogram)
+
+    return mixed_spectograms,  picked_inst_arr
