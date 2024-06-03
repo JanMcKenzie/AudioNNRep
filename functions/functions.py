@@ -93,6 +93,9 @@ def create_spectrogram(waveform, sample_rate = 16000):
     freq, ts, spectro = signal.spectrogram(waveform, sample_rate)
     return freq, ts, spectro
 
+def invert_spectrogram(freq, spectrogram):
+    return signal.istft(spectrogram, freq)
+
 def plot_spectrogram(freq, ts, spectrogram):
     plt.figure(figsize=(15, 5))
     plt.pcolormesh(ts, freq, spectrogram, shading='gouraud')
