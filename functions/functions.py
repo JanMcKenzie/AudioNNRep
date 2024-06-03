@@ -68,7 +68,7 @@ def pick_samples_and_classify(arrays):
 def add_waveform_to_list(filenames, path = "./audio/"):
     waveforms = []
     for filename in filenames:
-        waveform, params = read_wav_file_scipy(path + filename[0])
+        waveform, params = audio_to_waveform(path + filename[0])
         waveforms.append(waveform)
     return waveforms
         
@@ -291,7 +291,7 @@ def pad_spectrogram(spec, target_shape):
     padded_spec[:min_shape[0], :min_shape[1]] = spec[:min_shape[0], :min_shape[1]]
     return padded_spec
 
-def spectogram_to_audio(spectrogram, sr,output_wav):
+def spectrogram_to_audio(spectrogram, sr,output_wav):
     waveform = librosa.istft(spectrogram)
     waveform = waveform/np.max(np.abs(waveform))
     return write(output_wav, sr, (waveform*32767).astype(np.int16))
@@ -310,22 +310,29 @@ def find_longest_array(arrays):
             longest = len(array)
     return longest
 
-def nu_gen_spectro(N, target_shape=(129, 285), nperseg=2048, noverlap=512):
+
+
+def waveform_to_spectrogram(waveform):
+    waveform = waveform.astype(np.float32)
+    spectrogram = librosa.stft(waveform)
+    return np.abs(spectrogram)
+
+#Changed: make sure to input list of instruments paths
+def nu_gen_spectro(N, instrument_list, path = "./audio" ,target_shape=(129, 285), nperseg=2048, noverlap=512):
     data = []
     labels = []
-    
-    #instrument_list = [bass, guitar, flutes, keyboards]
-    instrument_list = [guitar, flutes]
-    pianos_waveforms = []
+    original_labels = []
+
 
     for i in range(N):
+
         paths, label = pick_samples_and_classify(instrument_list)
-        waveforms = add_waveform_to_list(paths)
+
+        original_labels.append(label)
+        waveforms = add_waveform_to_list(paths, path = path)
         mixed_waveform = combine_waveforms(waveforms)
         
-        #audio = audio_to_waveform(mixed_waveform)
-        mixed_spectro = waveform_to_spectogram(mixed_waveform)
-        #mixed_spectro = audio_to_spectrogram(mixed_waveform)
+        mixed_spectro = waveform_to_spectrogram(mixed_waveform)
         mixed_spectro_padded = pad_spectrogram(mixed_spectro, target_shape)
         mixed_spectro_normalized = normalize_spectrogram(mixed_spectro_padded)
         
@@ -335,20 +342,21 @@ def nu_gen_spectro(N, target_shape=(129, 285), nperseg=2048, noverlap=512):
         inst_i = 0
         for n, i in enumerate(label):
             if i == 1:
-                spectro = waveform_to_spectogram(waveforms[inst_i])
+                spectro = waveform_to_spectrogram(waveforms[inst_i])
                 spectro_padded = pad_spectrogram(spectro, target_shape)
                 spectro_normalized = normalize_spectrogram(spectro_padded)
                 inter_waveforms.append(spectro_normalized)
                 inst_i += 1
-                if n == 3:
-                    pianos_waveforms.append(spectro_normalized)
-                if i == 0:
-                    inter_waveforms.append(np.zeros(target_shape))
-                if n == 3:
-                    pianos_waveforms.append(np.zeros(target_shape))
+      
+            if i == 0:
+                inter_waveforms.append(np.zeros(target_shape))
+      
+
+        
         data.append(mixed_spectro_normalized)
         labels.append(inter_waveforms)
     
     data = np.array(data)
     
-    return data, np.array(labels)
+    return data, np.array(labels), np.array(original_labels) # remove last line if you want to return only data and labels
+    
