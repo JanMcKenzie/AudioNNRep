@@ -373,8 +373,13 @@ def generate_mixed_spectrograms(n_mixed_spectrograms, number_of_instruments = 3,
     keyboards = [filename for filename in filenames if "keyboard" in filename] 
     instruments = [organ, bass, guitar, vocal, flutes, keyboards]
     picked_inst_arr = np.zeros((n_mixed_spectrograms, len(instruments)))
-
     
+    for i in range(n_mixed_spectrograms):
+        # Set 3 random values in picked_inst_arr to 1
+        random_indices = np.random.choice(len(instruments), number_of_instruments, replace=False)
+        for j in random_indices:
+            picked_inst_arr[i, j] = 1
+
     mixed_spectograms = []
     for i in tqdm.tqdm(range(n_mixed_spectrograms)):
         selected_files = []
