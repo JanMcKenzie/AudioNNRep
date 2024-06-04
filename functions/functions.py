@@ -373,29 +373,34 @@ def generate_mixed_spectrograms(n_mixed_spectrograms, number_of_instruments = 3,
     instruments = [organ, bass, guitar, vocal, flutes, keyboards]
     picked_inst_arr = np.zeros((n_mixed_spectrograms, len(instruments)))
     
-    for i in range(n_mixed_spectrograms):
+    import tqdm as tqdm
+    for i in tqdm.tqdm(range(n_mixed_spectrograms)):
     # for each row, turn 3 random zeros to 1
         picked_inst = random.sample(range(len(instruments)), number_of_instruments)
         picked_inst_arr[i, picked_inst] = 1
     
-        mixed_spectograms = []
-        for i in range(n_mixed_spectrograms):
-            selected_files = []
-            # Select files from the picked instruments
-            for j in range(len(instruments)):
-                if picked_inst_arr[i, j] == 1:
-                    selected_files.append(random.choice(instruments[j]))
+    mixed_spectograms = []
+    for i in tqdm.tqdm(range(n_mixed_spectrograms)):
+        selected_files = []
+        # Select files from the picked instruments
+        for j in range(len(instruments)):
+            if picked_inst_arr[i, j] == 1:
+                selected_files.append(random.choice(instruments[j]))
 
-            # Generate the mixed spectrogram, and save the individual spectrograms
-            for j in range(len(selected_files)):
-                waveform_test, sr = audio_to_waveform(path + selected_files[j])
-                if j == 0:
-                    combined_waveform = waveform_test
-                else:
-                    combined_waveform = combined_waveform + waveform_test
+        # Generate the mixed spectrogram, and save the individual spectrograms
+        for j in range(len(selected_files)):
+            waveform_test, sr = audio_to_waveform(path + selected_files[j])
+            if j == 0:
+                combined_waveform = waveform_test
+            else:
+                combined_waveform = combined_waveform + waveform_test
             
 
-            mixed_spectogram = waveform_to_spectogram(combined_waveform)
-            mixed_spectograms.append(mixed_spectogram)
+        mixed_spectogram = waveform_to_spectogram(combined_waveform)
+        mixed_spectograms.append(mixed_spectogram)
+
+    # Convert to numpy arrays
+    mixed_spectograms = np.array(mixed_spectograms)
+    picked_inst_arr = np.array(picked_inst_arr)
 
     return mixed_spectograms,  picked_inst_arr
