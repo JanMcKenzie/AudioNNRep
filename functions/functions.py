@@ -8,6 +8,8 @@ from scipy.io.wavfile import write
 from scipy import signal
 from sklearn.model_selection import train_test_split
 import librosa
+import tqdm as tqdm 
+import random
 
 def read_wav_file(filename):
     with wave.open(filename, 'rb') as wf:
@@ -248,7 +250,7 @@ def create_single_inst_classification_set_new_input(N_samples = 1000, classes = 
         # Remove the file from the list
         instrument_files[random_int] = np.delete(instrument_files[random_int], np.where(instrument_files[random_int] == audio_file[0]))
         waveform, params = audio_to_waveform(path + audio_file[0])
-        spectro = waveform_to_spectogram(waveform)
+        spectro = waveform_to_spectrogram(waveform)
         # Flatten the spectrogram
         spectro = spectro.flatten()
         data_spectograms.append(spectro)
@@ -360,4 +362,40 @@ def nu_gen_spectro(N, instrument_list, path = "./audio" ,target_shape=(129, 285)
     data = np.array(data)
     
     return data, np.array(labels), np.array(original_labels) # remove last line if you want to return only data and labels
+
+def generate_mixed_spectrograms(n_mixed_spectrograms, number_of_instruments = 3, path = "./audio/"):
+    filenames = read_files_in_dir(path)
+    organ = [filename for filename in filenames if "organ" in filename] 
+    bass = [filename for filename in filenames if "bass" in filename]
+    guitar = [filename for filename in filenames if "guitar" in filename]
+    vocal = [filename for filename in filenames if "vocal" in filename] 
+    flutes = [filename for filename in filenames if "flute" in filename]
+    keyboards = [filename for filename in filenames if "keyboard" in filename] 
+    instruments = [organ, bass, guitar, vocal, flutes, keyboards]
+    picked_inst_arr = np.zeros((n_mixed_spectrograms, len(instruments)))
+
     
+    mixed_spectograms = []
+    for i in tqdm.tqdm(range(n_mixed_spectrograms)):
+        selected_files = []
+        # Select files from the picked instruments
+        for j in range(len(instruments)):
+            if picked_inst_arr[i, j] == 1:
+                selected_files.append(random.choice(instruments[j]))
+
+        # Generate the mixed spectrogram, and save the individual spectrograms
+        for j in range(len(selected_files)):
+            waveform_test, sr = audio_to_waveform(path + selected_files[j])
+            if j == 0:
+                combined_waveform = waveform_test
+            else:
+                combined_waveform = combined_waveform + waveform_test
+
+        mixed_spectogram = waveform_to_spectrogram(combined_waveform)
+        mixed_spectograms.append(mixed_spectogram)
+
+    # Convert to numpy arrays
+    mixed_spectograms = np.array(mixed_spectograms)
+    picked_inst_arr = np.array(picked_inst_arr)
+
+    return mixed_spectograms,  picked_inst_arr
