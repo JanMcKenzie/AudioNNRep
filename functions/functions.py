@@ -404,3 +404,50 @@ def generate_mixed_spectrograms(n_mixed_spectrograms, number_of_instruments = 3,
     picked_inst_arr = np.array(picked_inst_arr)
 
     return mixed_spectograms,  picked_inst_arr
+
+def to_mel_spectrogram(spectrogram, sr, n_mels = 128):
+    return librosa.feature.melspectrogram(y = None, sr=sr, S = spectrogram, n_mels=128)
+
+
+def nu_gen_mel_spectro(N, instrument_list, path = "./audio" ,target_shape=(129, 285), sr = 22050, nperseg=2048, noverlap=512):
+    data = []
+    labels = []
+    original_labels = []
+
+
+    for i in range(N):
+
+        paths, label = pick_samples_and_classify(instrument_list)
+
+        original_labels.append(label)
+        waveforms = add_waveform_to_list(paths, path = path)
+        mixed_waveform = combine_waveforms(waveforms)
+        
+        mixed_spectro = waveform_to_spectrogram(mixed_waveform)
+        mixed_spectro_padded = pad_spectrogram(mixed_spectro, target_shape)
+        mixed_spectro_normalized = normalize_spectrogram(mixed_spectro_padded)
+        
+        inter_waveforms = []
+        
+
+        inst_i = 0
+        for n, i in enumerate(label):
+            if i == 1:
+                spectro = waveform_to_spectrogram(waveforms[inst_i])
+                spectro_padded = pad_spectrogram(spectro, target_shape)
+                
+
+                inter_waveforms.append(to_mel_spectrogram(spectro_padded, sr))
+                inst_i += 1
+      
+            if i == 0:
+                inter_waveforms.append(to_mel_spectrogram(np.zeros(target_shape), sr))
+      
+
+        
+        data.append(to_mel_spectrogram(mixed_spectro_normalized, sr))
+        labels.append(inter_waveforms)
+    
+    data = np.array(data)
+    
+    return data, np.array(labels), np.array(original_labels) # remove last line if you want to return only data and labels
