@@ -451,3 +451,35 @@ def nu_gen_mel_spectro(N, instrument_list, path = "./audio" ,target_shape=(129, 
     data = np.array(data)
     
     return data, np.array(labels), np.array(original_labels) # remove last line if you want to return only data and labels
+
+
+def pick_constant_samples_and_classify(arrays):
+    # Picks a constant number of samples and returns their filepath and label
+    instruments = []
+    # Pick at minimum two instruments
+    number_of_instruments = np.random.randint(2, len(arrays) + 1)
+    labels = np.zeros(len(arrays))
+    already_picked = []
+
+    while len(instruments) < number_of_instruments:
+        random_pick = np.random.randint(0, len(arrays))
+        if random_pick in already_picked:
+            continue  # Skip this iteration and proceed to the next iteration
+        else:
+            already_picked.append(random_pick)
+            pick = np.random.choice(arrays[random_pick], 1)
+            instruments.append(pick)
+            labels[random_pick] = 1
+
+    # Continue adding instruments until the length of instruments is 3 or greater
+    while len(instruments) < 2:
+        random_pick = np.random.randint(0, len(arrays))
+        if random_pick in already_picked:
+            continue  # Skip this iteration and proceed to the next iteration
+        else:
+            already_picked.append(random_pick)
+            pick = np.random.choice(arrays[random_pick], 1)
+            instruments.append(pick)
+            labels[random_pick] = 1
+
+    return instruments, labels
